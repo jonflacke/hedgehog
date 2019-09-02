@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.jonflacke</groupId>
 	<artifactId>hedgehog</artifactId>
-	<version>0.1.0</version>
+	<version>0.1.0-SNAPSHOT</version>
 	<name>hedgehog</name>
 	<description>JPA based API suite to offer complete CRUD capability with standardized responses with minimal code.</description>
 
