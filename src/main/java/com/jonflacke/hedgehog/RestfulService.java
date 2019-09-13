@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.io.Serializable;
+import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 /**
@@ -22,9 +23,12 @@ public class RestfulService<T, ID extends Serializable> {
             Collections.unmodifiableList(Arrays.asList("least", "greatest", "min", "max"));
 
     private BaseJpaRepository<T, ID> baseJpaRepository;
+    private Class<T>                 classType;
 
     public RestfulService(BaseJpaRepository<T, ID> baseJpaRepository) {
         this.baseJpaRepository = baseJpaRepository;
+        this.classType = ((Class<T>) ((ParameterizedType) getClass()
+                .getGenericSuperclass()).getActualTypeArguments()[0]);
     }
 
     protected List<T> getObjects(Map<String, String[]> parameters, String defaultSort) {
@@ -97,13 +101,14 @@ public class RestfulService<T, ID extends Serializable> {
         Map<String, SearchCriteria> searchCriteriaMap = new HashMap<>();
         for (String key : parameters.keySet()) {
             log.debug("Parameter {} with values: {}", key, String.join(", ", parameters.get(key)));
-            if (this.isReservedKey(key)) {
+            String[] separatedKey = key.split("\\.");
+            String realKey = this.getRealKey(separatedKey[0]);
+            if (this.isReservedKey(realKey) || !this.isFieldOnObject(realKey)) {
                 // reserved keys are handled elsewhere - skip them here
+                // if the key does not exist on the object, ignore it
                 continue;
             }
             boolean isNonPredicateKey = this.isNonPredicateKey(key);
-            String[] separatedKey = key.split("\\.");
-            String realKey = this.getRealKey(separatedKey[0]);
             String dotParam = "";
             if (separatedKey.length > 1) {
                 dotParam = separatedKey[1];
@@ -149,6 +154,11 @@ public class RestfulService<T, ID extends Serializable> {
             }
         }
         return filterParameters;
+    }
+
+    private boolean isFieldOnObject(String fieldName) {
+        return Arrays.stream(this.classType.getDeclaredFields())
+                .anyMatch(f -> f.getName().equals(fieldName));
     }
 
     private Map<String, Integer> getPaginationParameters(Map<String, String[]> parameters) {
