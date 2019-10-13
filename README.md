@@ -304,3 +304,4 @@ All of the above can be used together in any combination. If you wanted to find 
 - Does not support "includes" parameters to gather additional data related to the table being queried (i.e. when searching for the "customer" table, include the "address" table data related to those customers being returned)
 - Not all data types supported as columns
 - ~~Passing in a column key that does not exist in the object will return an error - the key should be ignored if unknown~~
+- Add support for projections
