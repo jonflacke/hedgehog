@@ -8,7 +8,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
+import javax.persistence.EmbeddedId;
+import javax.persistence.Id;
+import javax.persistence.IdClass;
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
@@ -31,9 +35,10 @@ public class RestfulService<T, ID extends Serializable> {
                 .getGenericSuperclass()).getActualTypeArguments()[0]);
     }
 
-    protected List<T> getObjects(Map<String, String[]> parameters, String defaultSort) {
+    protected List<T> getObjects(Map<String, String[]> parameters) {
         List<T> objects;
-        Sort sort = this.getSort(parameters, Sort.Direction.ASC, defaultSort);
+        Field idField = this.getDefaultSortField();
+        Sort sort = this.getSort(parameters, Sort.Direction.ASC, idField.getName());
         PageRequest pageRequest = this.getPageRequest(parameters, sort);
         List<SearchCriteria> searchCriteriaList = this.getSearchCriteria(parameters);
         if (searchCriteriaList.isEmpty()) {
@@ -159,6 +164,18 @@ public class RestfulService<T, ID extends Serializable> {
     private boolean isFieldOnObject(String fieldName) {
         return Arrays.stream(this.classType.getDeclaredFields())
                 .anyMatch(f -> f.getName().equals(fieldName));
+    }
+
+    private Field getDefaultSortField() {
+        return this.getEntityIdField().orElse(this.classType.getDeclaredFields()[0]);
+    }
+
+    private Optional<Field> getEntityIdField() {
+        return Arrays.stream(this.classType.getDeclaredFields()).filter(f ->
+                f.isAnnotationPresent(Id.class)
+                        || f.isAnnotationPresent(EmbeddedId.class)
+                        || f.isAnnotationPresent(IdClass.class)
+        ).findAny();
     }
 
     private Map<String, Integer> getPaginationParameters(Map<String, String[]> parameters) {

@@ -65,7 +65,7 @@ public class MyModelService extends RestfulService<MyModel, Integer> {
     }
 
     public List<MyModel> getMyModels(Map<String, String[]> parameters) {
-        return this.getObjects(parameters, "id");
+        return this.getObjects(parameters);
     }
 
     public MyModel getMyModel(Integer id) {
@@ -170,7 +170,7 @@ To read a specific MyModel object, you would submit a GET request to `/my-models
 This is where this project was really meant to help. With this project, you are able to perform sorting, paging, filtering, and including.
 
 ##### Sorting
-All lists are automatically sorted by IDs in ascending order by default. To specify a different sort, in the query string, you need to specify the column on which you wish to sort and the direction. The direction is indicated with the `-` for descending or `+` for ascending. If no sign is indicated, `+` is used as the default. Sorting is possible on any column within the table. Using our example, to sort by stringColumnName in descending order, you would submit the following GET request:
+All lists are automatically defaulted to be sorted by IDs in ascending order (based on the @Id, @EmbeddedId, @IdClass annotations). To specify a different sort, in the query string, you need to specify the column on which you wish to sort and the direction. The direction is indicated with the `-` for descending or `+` for ascending. If no sign is indicated, `+` is used as the default. Sorting is possible on any column within the table. Using our example, to sort by stringColumnName in descending order, you would submit the following GET request:
 ```
 /my-models?sort=-stringColumnName
 ```
@@ -298,9 +298,9 @@ All of the above can be used together in any combination. If you wanted to find 
 
 ## Known Issues / Opportunities for Improvement
 - Some of the supported criteria will not work on every data type as many do not make sense (i.e. "less than" on a "boolean", "greatest" on a "string") and there is no error checking for this
-- An entity "ID" field **must** be specified currently but we should be able to gather this from the @id annotation
+- ~~An entity "ID" field **must** be specified currently but we should be able to gather this from the @id annotation~~
 - Using both a "least" and "greatest" parameter at the same time will produce unknown results
 - Unable to use 2 "least" or "greatest" parameters at once and no error is thrown (will return an empty result set)
 - Does not support "includes" parameters to gather additional data related to the table being queried (i.e. when searching for the "customer" table, include the "address" table data related to those customers being returned)
 - Not all data types supported as columns
-~~- Passing in a column key that does not exist in the object will return an error - the key should be ignored if unknown~~
+- ~~Passing in a column key that does not exist in the object will return an error - the key should be ignored if unknown~~
