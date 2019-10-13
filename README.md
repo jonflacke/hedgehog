@@ -297,10 +297,10 @@ All of the above can be used together in any combination. If you wanted to find 
 ```
 
 ## Known Issues / Opportunities for Improvement
-- Some of the supported criteria will not work on every data type as many do not make sense (i.e. "less than" on a "boolean", "greatest" on a "string") and there is no error checking for this
+- ~~Some of the supported criteria will not work on every data type as many do not make sense (i.e. "less than" on a "boolean", "greatest" on a "string") and there is no error checking for this~~
 - ~~An entity "ID" field **must** be specified currently but we should be able to gather this from the @id annotation~~
 - Using both a "least" and "greatest" parameter at the same time will produce unknown results
-- Unable to use 2 "least" or "greatest" parameters at once and no error is thrown (will return an empty result set)
+- ~~Unable to use 2 "least" or "greatest" parameters at once and no error is thrown (will return an empty result set)~~ Decided this should be expected behaviour - if the least value of 1 column is not the same row as the greatest/least of another, an empty result set **should** be returned.
 - Does not support "includes" parameters to gather additional data related to the table being queried (i.e. when searching for the "customer" table, include the "address" table data related to those customers being returned)
 - Not all data types supported as columns
 - ~~Passing in a column key that does not exist in the object will return an error - the key should be ignored if unknown~~

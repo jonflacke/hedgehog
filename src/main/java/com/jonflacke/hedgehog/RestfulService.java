@@ -14,6 +14,8 @@ import javax.persistence.IdClass;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -25,6 +27,26 @@ public class RestfulService<T, ID extends Serializable> {
             Collections.unmodifiableList(Arrays.asList("sort", "include", "count", "start"));
     public static final List<String> NON_PREDICATE_TERMS =
             Collections.unmodifiableList(Arrays.asList("least", "greatest", "min", "max"));
+    public static final List<SearchOperation> VALID_BOOLEAN_OPERATORS =
+            Collections.unmodifiableList(Arrays.asList(SearchOperation.EQUALS, SearchOperation.NOT_EQUAL,
+                    SearchOperation.NULL, SearchOperation.NOT_NULL));
+    public static final List<SearchOperation> VALID_STRING_OPERATORS =
+            Collections.unmodifiableList(Arrays.asList(SearchOperation.EQUALS, SearchOperation.NOT_EQUAL,
+                    SearchOperation.NULL, SearchOperation.NOT_NULL, SearchOperation.ENDS, SearchOperation.STARTS,
+                    SearchOperation.LIKE));
+    public static final List<SearchOperation> VALID_NUMERIC_OPERATORS =
+            Collections.unmodifiableList(Arrays.asList(SearchOperation.EQUALS, SearchOperation.NOT_EQUAL,
+                    SearchOperation.NULL, SearchOperation.NOT_NULL, SearchOperation.ENDS, SearchOperation.STARTS,
+                    SearchOperation.LIKE, SearchOperation.GREATER_THAN, SearchOperation.LESS_THAN,
+                    SearchOperation.GREATEST, SearchOperation.LEAST));
+    public static final List<SearchOperation> VALID_DATE_OPERATORS =
+            Collections.unmodifiableList(Arrays.asList(SearchOperation.EQUALS, SearchOperation.NOT_EQUAL,
+                    SearchOperation.NULL, SearchOperation.NOT_NULL, SearchOperation.GREATER_THAN,
+                    SearchOperation.LESS_THAN, SearchOperation.GREATEST, SearchOperation.LEAST));
+    public static final List<SearchOperation> VALID_CHARACTER_OPERATORS =
+            Collections.unmodifiableList(Arrays.asList(SearchOperation.EQUALS, SearchOperation.NOT_EQUAL,
+                    SearchOperation.NULL, SearchOperation.NOT_NULL));
+
 
     private BaseJpaRepository<T, ID> baseJpaRepository;
     private Class<T>                 classType;
@@ -128,6 +150,7 @@ public class RestfulService<T, ID extends Serializable> {
                     fieldName = actionSpecifier;
                 }
                 SearchOperation searchOperation = this.getSearchOperation(specifiedOperation, value);
+                this.validateSearchOperationOnParameterType(searchOperation, getFieldOnObject(fieldName));
                 if (searchCriteriaMap.containsKey(actionSpecifier)) {
                     searchCriteriaMap.get(actionSpecifier).addOperationValueEntry(searchOperation, value);
                 } else {
@@ -156,19 +179,14 @@ public class RestfulService<T, ID extends Serializable> {
         }
     }
 
-    protected List<String> getFilterParameters(Map<String, String[]> parameters) {
-        List<String> filterParameters = new ArrayList<>();
-        if (parameters.containsKey("filter")) {
-            for (String value : parameters.get("filter")) {
-                filterParameters.add(value);
-            }
-        }
-        return filterParameters;
-    }
-
     private boolean isFieldOnObject(String fieldName) {
         return Arrays.stream(this.classType.getDeclaredFields())
                 .anyMatch(f -> f.getName().equals(fieldName));
+    }
+
+    private Field getFieldOnObject(String fieldName) {
+        return Arrays.stream(this.classType.getDeclaredFields())
+                .filter(f -> f.getName().equals(fieldName)).findFirst().orElse(null);
     }
 
     private Field getDefaultSortField() {
@@ -235,6 +253,45 @@ public class RestfulService<T, ID extends Serializable> {
                 throw new BadRequestException("Invalid search criteria");
         }
         return searchOperation;
+    }
+
+    private void validateSearchOperationOnParameterType(SearchOperation searchOperation, Field field) {
+        boolean operationValid = true;
+        if (field == null) {
+            operationValid = false;
+        } else {
+            if (field.getType().isAssignableFrom(Number.class)) {
+                if (!VALID_NUMERIC_OPERATORS.contains(searchOperation)) {
+                    operationValid = false;
+                }
+            }
+            if (field.getType().isAssignableFrom(String.class)) {
+                if (!VALID_STRING_OPERATORS.contains(searchOperation)) {
+                    operationValid = false;
+                }
+            }
+            if (field.getType().isAssignableFrom(Date.class)
+                    || field.getType().isAssignableFrom(LocalDate.class)
+                    || field.getType().isAssignableFrom(LocalDateTime.class)) {
+                if (!VALID_DATE_OPERATORS.contains(searchOperation)) {
+                    operationValid = false;
+                }
+            }
+            if (field.getType().isAssignableFrom(Boolean.class)) {
+                if (!VALID_BOOLEAN_OPERATORS.contains(searchOperation)) {
+                    operationValid = false;
+                }
+            }
+            if (field.getType().isAssignableFrom(Character.class)) {
+                if (!VALID_CHARACTER_OPERATORS.contains(searchOperation)) {
+                    operationValid = false;
+                }
+            }
+        }
+        if (!operationValid) {
+            throw new BadRequestException("Unable to perform operation of type " + searchOperation.toString()
+                    + " on a field of type " + field.getType().toString());
+        }
     }
 
     private Boolean isNonFilterAction(String key) {
