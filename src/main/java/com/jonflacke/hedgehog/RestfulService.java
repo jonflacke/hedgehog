@@ -14,6 +14,7 @@ import javax.persistence.IdClass;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -271,6 +272,7 @@ public class RestfulService<T, ID extends Serializable> {
                 }
             }
             if (field.getType().isAssignableFrom(Date.class)
+                    || field.getType().isAssignableFrom(Time.class)
                     || field.getType().isAssignableFrom(LocalDate.class)
                     || field.getType().isAssignableFrom(LocalDateTime.class)) {
                 if (!VALID_DATE_OPERATORS.contains(searchOperation)) {

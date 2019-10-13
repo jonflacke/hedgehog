@@ -108,7 +108,7 @@ public class GenericSpecification<T> implements Specification<T> {
         if (Boolean.class.isAssignableFrom(classType)) {
             return Boolean.valueOf(value);
         } else if (LocalDate.class.isAssignableFrom(classType)) {
-            return LocalDate.parse(value, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmss"));
+            return LocalDate.parse(value, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
         } else if (Time.class.isAssignableFrom(classType)) {
             return Time.valueOf(value);
         } else if (Date.class.isAssignableFrom(classType)) {
