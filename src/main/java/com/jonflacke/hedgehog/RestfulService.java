@@ -21,8 +21,8 @@ import java.util.*;
  */
 public class RestfulService<T, ID extends Serializable> {
     private final Logger log = LoggerFactory.getLogger(RestfulService.class);
-    public static final List<String> RESERVED_WORDS =
-            Collections.unmodifiableList(Arrays.asList("sort", "include", "count", "start", "filter"));
+    public static final List<String> NON_FILTER_ACTIONS =
+            Collections.unmodifiableList(Arrays.asList("sort", "include", "count", "start"));
     public static final List<String> NON_PREDICATE_TERMS =
             Collections.unmodifiableList(Arrays.asList("least", "greatest", "min", "max"));
 
@@ -79,13 +79,12 @@ public class RestfulService<T, ID extends Serializable> {
             for (String value : values) {
                 String sortParameter;
                 Sort.Direction direction = Sort.Direction.ASC;
-                if (value.indexOf("-") != 1 || value.indexOf("+") != 1) {
+                sortParameter = value.trim();
+                if (value.startsWith("-") || value.startsWith("+")) {
                     if (value.substring(0, 1).equals("-")) {
                         direction = Sort.Direction.DESC;
                     }
                     sortParameter = value.substring(1).trim();
-                } else {
-                    sortParameter = value.trim();
                 }
                 if (!sortParameter.isEmpty()) {
                     orders.add(new Sort.Order(direction, sortParameter));
@@ -107,26 +106,32 @@ public class RestfulService<T, ID extends Serializable> {
         for (String key : parameters.keySet()) {
             log.debug("Parameter {} with values: {}", key, String.join(", ", parameters.get(key)));
             String[] separatedKey = key.split("\\.");
-            String realKey = this.getRealKey(separatedKey[0]);
-            if (this.isReservedKey(realKey) || !this.isFieldOnObject(realKey)) {
-                // reserved keys are handled elsewhere - skip them here
-                // if the key does not exist on the object, ignore it
+            String actionSpecifier = this.getRealKey(separatedKey[0]);
+            boolean isNonPredicateKey = this.isNonPredicateKey(key);
+            if (separatedKey.length <= 1 && !isNonPredicateKey) {
+                // Enforce keys use reserved words or non-predicate keys only - ignore all others
                 continue;
             }
-            boolean isNonPredicateKey = this.isNonPredicateKey(key);
-            String dotParam = "";
-            if (separatedKey.length > 1) {
-                dotParam = separatedKey[1];
+            String fieldName = (!isNonPredicateKey ? separatedKey[1] : "");
+            if (this.isNonFilterAction(actionSpecifier) || (!isNonPredicateKey && !this.isFieldOnObject(fieldName))) {
+                // non-filter actions are handled elsewhere - skip them here
+                // if the field does not exist on the entity, ignore it
+                continue;
+            }
+            String specifiedOperation = "";
+            if (separatedKey.length > 2) {
+                specifiedOperation = separatedKey[2];
             }
             for (String value : parameters.get(key)) {
                 if (isNonPredicateKey) {
-                    dotParam = realKey;
+                    specifiedOperation = actionSpecifier;
+                    fieldName = actionSpecifier;
                 }
-                SearchOperation searchOperation = this.getSearchOperation(dotParam, value);
-                if (searchCriteriaMap.containsKey(realKey)) {
-                    searchCriteriaMap.get(realKey).addOperationValueEntry(searchOperation, value);
+                SearchOperation searchOperation = this.getSearchOperation(specifiedOperation, value);
+                if (searchCriteriaMap.containsKey(actionSpecifier)) {
+                    searchCriteriaMap.get(actionSpecifier).addOperationValueEntry(searchOperation, value);
                 } else {
-                    searchCriteriaMap.put(realKey, new SearchCriteria(realKey, searchOperation, value));
+                    searchCriteriaMap.put(actionSpecifier, new SearchCriteria(fieldName, searchOperation, value));
                 }
             }
         }
@@ -232,8 +237,8 @@ public class RestfulService<T, ID extends Serializable> {
         return searchOperation;
     }
 
-    private Boolean isReservedKey(String key) {
-        return RESERVED_WORDS.contains(key);
+    private Boolean isNonFilterAction(String key) {
+        return NON_FILTER_ACTIONS.contains(key);
     }
 
     private Boolean isNonPredicateKey(String key) {

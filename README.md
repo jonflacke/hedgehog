@@ -195,7 +195,7 @@ Paging can be used in conjunction with sort. In order to bring back MyModels thi
 ```
 
 ##### Searching / Filtering
-You can search/filter on any column through a variety of common criteria. With "equals" being the default, all other parameters are specified using dot-notation. Some of these supported criteria **will not work on every data type** as many do not make sense (i.e. "less than" on a "boolean", "greatest" on a "string"). Currently there is no error checking for this and it needs developed - all are still usable but the app will throw an error if an inappropriate combination is used. The current list of supported criteria is:
+You can search/filter on any column through a variety of common criteria. To allow databases with column names such as "page" or "sort", you must prefix the criteria with the word "filter". With "equals" being the default, all other parameters are specified using dot-notation. Some of these supported criteria **will not work on every data type** as many do not make sense (i.e. "less than" on a "boolean", "greatest" on a "string"). Currently there is no error checking for this and it needs developed - all are still usable but the app will throw an error if an inappropriate combination is used. The current list of supported criteria is:
 - equals
 - not equal
 - like
@@ -211,43 +211,43 @@ You can search/filter on any column through a variety of common criteria. With "
 ###### Equals
 Searching by `equals` is the default. If no other parameter is specified in the query string, then it is assumed the search is to be based on strict equality. This is usable by all data types. To find all records in our MyModels table with a stringColumnName value of "Awesome", use:
 ```
-/my-models?stringColumnName=Awesome
+/my-models?filter.stringColumnName=Awesome
 ```
 
 ###### Not Equals
 Similar to "equals" is its counterpart, "not equals". Using this parameter will find all rows in the database where the specified column's value is **not** equal to the supplied value. For example, if we wish to find all rows where stringColumnName has a value not equal to "Awesome":
 ```
-/my-models?stringColumnName.not=Awesome
+/my-models?filter.stringColumnName.not=Awesome
 ```
 
 ###### Like
 Using `like` will find all rows where the specified column's value contains the value specified somewhere within it. Unlike equals, this will not search for precisely the value type but will return rows with the supplied value anywhere within it. To find all rows where the stringColumnName's value contains the word "awesome", use:
 ```
-/my-models?stringColumnName.like=awesome
+/my-models?filter.stringColumnName.like=awesome
 ```
 
 ###### Starts
 Similar to `like`, using `starts` will find all rows where the data begins with the specified value. To find all rows where stringColumnName begins with "awe":
 ```
-/my-models?stringColumnName.starts=awe
+/my-models?filter.stringColumnName.starts=awe
 ```
 
 ###### Ends
 Similar to `like`, using `ends` will find all rows where the data ends with the specified value. To find all rows where stringColumnName ends with "some":
 ```
-/my-models?stringColumnName.ends=some
+/my-models?filter.stringColumnName.ends=some
 ```
 
 ##### Less Than
 Less Than will return all rows where the specified value is less than the value supplied. If you wished to find all rows where the dateColumnName is less than (before) January 1, 2000, you would request:
 ```
-/my-models?dateColumnName.less=01-01-2000
+/my-models?filter.dateColumnName.less=01-01-2000
 ```
 
 ##### Greater Than
 Greater Than will return all rows where the specified value is greater than the value supplied. If you wished to find all rows where the dateColumnName is greater than (after) January 1, 2000, you would request:
 ```
-/my-models?dateColumnName.greater=01-01-2000
+/my-models?filter.dateColumnName.greater=01-01-2000
 ```
 
 ##### Least
@@ -265,11 +265,11 @@ Using `greatest` will return all rows where the value in that column is the grea
 ##### Null or Not Null
 To find all resources where a value is present within a column or where a value is missing in a column, you would use the `null` operator. In this case, the value within the query string is a boolean indicating whether you wish to search for null values - "true" indicating you wish to search for resources with nulls and "false" indicating you wish to find those without nulls. For example, to find all resources where stringColumnName is null, use:
 ```
-/my-models?stringColumnName.null=true
+/my-models?filter.stringColumnName.null=true
 ```
 Similarly, to find all resources where the stringColumnName is not null, use:
 ```
-/my-models?stringColumnName.null=false
+/my-models?filter.stringColumnName.null=false
 ```
 
 ##### Combinations
@@ -277,23 +277,23 @@ All of these search criteria can be combined within a single query string in any
 
 If you were to search for two of the *same criteria* on the *same column* (i.e. stringColumnName equals "Awesome", stringColumnName equals "Opossum"), these are combined as though they were using the "OR" operator (i.e. stringColumnName equals "Awesome" **or** "Opossum"). Example:
 ```
-/my-models?stringColumnName=Awesome&stringColumnName=Opossum
+/my-models?filter.stringColumnName=Awesome&filter.stringColumnName=Opossum
 ```
 
 If you were to search using the *same criteria* for *different columns* (i.e. stringColumnName equals "Awesome", dateColumnName equals "01-01-2000"), these would be combined as though they were using the "AND" operator (i.e. stringColumnName equals "Awesome" **and** dateColumnName equals "01-01-2000"). Example:
 ```
-/my-models?stringColumnName=Awesome&dateColumnName="01-01-2000"
+/my-models?filter.stringColumnName=Awesome&filter.dateColumnName="01-01-2000"
 ```
 
 If you were to search using *different criteria* for the *same column* (i.e. dateColumnName greater than "01-01-2000", dateColumnName less than "01-01-2001"), these would be combined as though they were using the "AND" operator (i.e. dateColumnName greater than "01-01-2000" **and** dateColumnName less than "01-01-2001"). This is what provides one with the "between" operator as with our example you would be finding all dates that are between January 1, 2000 and January 1, 2001. Example query string:
 ```
-/my-models?dateColumnName.greater="01-01-2000&dateColumnName.less="01-01-2001"
+/my-models?filter.dateColumnName.greater="01-01-2000&filter.dateColumnName.less="01-01-2001"
 ```
 
 ##### Putting it all together
 All of the above can be used together in any combination. If you wanted to find the 3rd set of 25 resources where stringColumnName contains "awesome" or stringColumnName contains "fantastic" and the dateColumnName is greater than January 1, 2000 with the latest dateColumnName values first, the query string would be:
 ```
-/my-models?stringColumnName.like=awesome&stringColumnName.like=fantastic&dateColumnName.greater=01-01-2000&sort=-dateColumnName&count=25&start=3
+/my-models?filter.stringColumnName.like=awesome&filter.stringColumnName.like=fantastic&filter.dateColumnName.greater=01-01-2000&sort=-dateColumnName&count=25&start=3
 ```
 
 ## Known Issues / Opportunities for Improvement
