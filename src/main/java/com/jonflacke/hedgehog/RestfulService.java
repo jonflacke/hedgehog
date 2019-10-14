@@ -227,6 +227,12 @@ public class RestfulService<T, ID extends Serializable> {
             case "like":
                 searchOperation = SearchOperation.LIKE;
                 break;
+            case "starts":
+                searchOperation = SearchOperation.STARTS;
+                break;
+            case "ends":
+                searchOperation = SearchOperation.ENDS;
+                break;
             case "not":
                 searchOperation = SearchOperation.NOT_EQUAL;
                 break;
