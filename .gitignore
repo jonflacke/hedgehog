@@ -28,3 +28,10 @@ HELP.md
 
 ### VS Code ###
 .vscode/
+
+
+### Local Settings ###
+settings.xml
+
+### Package reduced POM ###
+dependency-reduced-pom.xml

@@ -1,6 +1,6 @@
-package com.jonflacke.hedgehog;
+package com.codehedgehog.strawberry;
 
-import com.jonflacke.hedgehog.exceptions.BadRequestException;
+import com.codehedgehog.strawberry.exceptions.BadRequestException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.Assert;
 

@@ -1,6 +1,6 @@
-package com.jonflacke.hedgehog;
+package com.codehedgehog.strawberry;
 
-import com.jonflacke.hedgehog.exceptions.BadRequestException;
+import com.codehedgehog.strawberry.exceptions.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;

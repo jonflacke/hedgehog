@@ -8,11 +8,31 @@
 		<version>2.1.4.RELEASE</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.jonflacke</groupId>
-	<artifactId>hedgehog</artifactId>
-	<version>0.1.0-SNAPSHOT</version>
-	<name>hedgehog</name>
-	<description>JPA based API suite to offer complete CRUD capability with standardized responses with minimal code.</description>
+	<groupId>com.codehedgehog</groupId>
+	<artifactId>strawberry</artifactId>
+	<version>1.0.0</version>
+	<name>Code Hedgehog</name>
+	<description>Spring Data JPA and Spring Web based API suite to offer complete CRUD capability using standardized query strings and responses with minimal code.</description>
+	<url>http://codehedgehog.com</url>
+	<licenses>
+		<license>
+			<name>MIT License</name>
+			<url>http://www.opensource.org/licenses/mit-license.php</url>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<name>Jon Flacke</name>
+			<email>TalkToMe@jonflacke.com</email>
+		</developer>
+	</developers>
+
+	<scm>
+		<connection>scm:git:git://github.com/jonflacke/hedgehog.git</connection>
+		<developerConnection>scm:git:ssh://github.com/jonflacke/hedgehog.git</developerConnection>
+		<url>https://github.com/jonflacke/hedgehog/tree/master</url>
+	</scm>
 
 	<properties>
 		<java.version>1.8</java.version>
@@ -57,6 +77,47 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<layout>NONE</layout>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>attach-javadocs</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-gpg-plugin</artifactId>
+				<version>1.6</version>
+				<executions>
+					<execution>
+						<id>sign-artifacts</id>
+						<phase>package</phase>
+						<goals>
+							<goal>sign</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

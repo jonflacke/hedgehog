@@ -1,4 +1,4 @@
-package com.jonflacke.hedgehog;
+package com.codehedgehog.strawberry;
 
 import java.util.Arrays;
 import java.util.Optional;

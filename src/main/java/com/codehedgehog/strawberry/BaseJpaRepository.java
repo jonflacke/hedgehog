@@ -1,4 +1,4 @@
-package com.jonflacke.hedgehog;
+package com.codehedgehog.strawberry;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;

@@ -1,4 +1,4 @@
-package com.jonflacke.hedgehog.exceptions;
+package com.codehedgehog.strawberry.exceptions;
 
 import org.springframework.http.HttpStatus;
 

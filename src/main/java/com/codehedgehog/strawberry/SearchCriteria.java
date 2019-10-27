@@ -1,4 +1,4 @@
-package com.jonflacke.hedgehog;
+package com.codehedgehog.strawberry;
 
 import org.springframework.util.Assert;
 
