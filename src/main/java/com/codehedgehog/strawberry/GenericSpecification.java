@@ -2,6 +2,7 @@ package com.codehedgehog.strawberry;
 
 import com.codehedgehog.strawberry.exceptions.BadRequestException;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.util.StringUtils;
 
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
@@ -114,8 +115,24 @@ public class GenericSpecification<T> implements Specification<T> {
         } else if (Date.class.isAssignableFrom(classType)) {
             DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
             return dateFormat.parse(value);
+        } else if (Enum.class.isAssignableFrom(classType)){
+            return getEnumFromString(classType, value);
         } else {
             return value;
         }
+    }
+
+    /**
+     * Converts enums from the string value to enum value
+     * @param <T> Enum type
+     * @param classType enum class type. All enums MUST be all caps.
+     * @param value case insensitive
+     * @return corresponding enum, or null
+     */
+    private static <T extends Enum<T>> T getEnumFromString(Class<T> classType, String value) throws IllegalArgumentException {
+        if( classType != null && !StringUtils.isEmpty(value) ) {
+            return Enum.valueOf(classType, value.trim().toUpperCase());
+        }
+        return null;
     }
 }
