@@ -49,7 +49,7 @@ public class RestfulService<T, ID extends Serializable> {
                     SearchOperation.NULL, SearchOperation.NOT_NULL));
 
 
-    private BaseJpaRepository<T, ID> baseJpaRepository;
+    protected BaseJpaRepository<T, ID> baseJpaRepository;
     private Class<T>                 classType;
 
     public RestfulService(BaseJpaRepository<T, ID> baseJpaRepository) {
