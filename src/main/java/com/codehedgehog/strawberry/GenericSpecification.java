@@ -4,10 +4,7 @@ import com.codehedgehog.strawberry.exceptions.BadRequestException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
 
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
+import javax.persistence.criteria.*;
 import java.sql.Time;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -26,6 +23,13 @@ public class GenericSpecification<T> implements Specification<T> {
         this.searchCriteria = searchCriteria;
     }
 
+    /**
+     * Creates a specification predicate for each search term based on the class' search criteria object
+     * @param root entity on which to search
+     * @param query the criteria query on which to build
+     * @param criteriaBuilder the builder for the criteria query
+     * @return predicate to use in specification search
+     */
     @Override
     public Predicate toPredicate(Root<T> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
         Comparator<Map.Entry<SearchOperation, Object>> searchOperationMapComparator = (entry1, entry2) -> {
@@ -54,49 +58,55 @@ public class GenericSpecification<T> implements Specification<T> {
         return returnPredicate;
     }
 
+    /**
+     * Keeps track of all seen parameters, including the specific operations
+     * performed (i.e. like, equals, greater, etc)
+     * @param seenParams current list of seen parameters
+     * @param entry the entry to add to the list
+     */
     private void addSeenParam(List<String> seenParams, Map.Entry<SearchOperation, Object> entry) {
         seenParams.add(searchCriteria.getKey() + entry.getKey().toString());
         seenParams.add(searchCriteria.getKey());
     }
 
+    /**
+     * Gets the individual search predicate based on the key and operation
+     * @param root root entity on which to search
+     * @param criteriaBuilder builder for the criteria query
+     * @param operationValueEntry operation and value with which to build
+     * @return predicate for operation and value
+     */
     private Predicate getSearchPredicate(Root<T> root, CriteriaBuilder criteriaBuilder, Map.Entry<SearchOperation,
             Object> operationValueEntry) {
         try {
+            final String value = operationValueEntry.getValue().toString().toLowerCase();
+            Class<?> javaType = getEntityExpressionObject(root).getJavaType();
             switch (operationValueEntry.getKey()) {
                 case LIKE:
-                    return criteriaBuilder.like(criteriaBuilder.lower(root.get(searchCriteria.getKey())),
-                            SQL_LIKE + this.getCastValue(root.get(searchCriteria.getKey()).getJavaType(),
-                                    operationValueEntry.getValue().toString().toLowerCase()) + SQL_LIKE);
+                    return criteriaBuilder.like(criteriaBuilder.lower(getEntityExpressionString(root)),
+                            SQL_LIKE + this.getCastValue(javaType, value) + SQL_LIKE);
                 case STARTS:
-                    return criteriaBuilder.like(criteriaBuilder.lower(root.get(searchCriteria.getKey())),
-                            this.getCastValue(root.get(searchCriteria.getKey()).getJavaType(),
-                                    operationValueEntry.getValue().toString().toLowerCase()) + SQL_LIKE);
+                    return criteriaBuilder.like(criteriaBuilder.lower(getEntityExpressionString(root)),
+                            this.getCastValue(javaType, value) + SQL_LIKE);
                 case ENDS:
-                    return criteriaBuilder.like(criteriaBuilder.lower(root.get(searchCriteria.getKey())),
-                            SQL_LIKE + this.getCastValue(root.get(searchCriteria.getKey()).getJavaType(),
-                                    operationValueEntry.getValue().toString().toLowerCase()));
+                    return criteriaBuilder.like(criteriaBuilder.lower(getEntityExpressionString(root)),
+                            SQL_LIKE + this.getCastValue(javaType, value));
                 case EQUALS:
-                    return criteriaBuilder.equal(root.get(searchCriteria.getKey()),
-                            this.getCastValue(root.get(searchCriteria.getKey()).getJavaType(),
-                                    operationValueEntry.getValue().toString()));
+                    return criteriaBuilder.equal(criteriaBuilder.lower(getEntityExpressionString(root)),
+                            this.getCastValue(javaType, value));
                 case NOT_EQUAL:
-                    return criteriaBuilder.notEqual(root.get(searchCriteria.getKey()),
-                            this.getCastValue(root.get(searchCriteria.getKey()).getJavaType(),
-                                    operationValueEntry.getValue().toString()));
+                    return criteriaBuilder.notEqual(criteriaBuilder.lower(getEntityExpressionString(root)),
+                            this.getCastValue(javaType, value));
                 case LESS_THAN:
-                    return criteriaBuilder.lessThan(root.get(searchCriteria.getKey()),
-                            (Comparable) this.getCastValue(
-                                    root.get(searchCriteria.getKey()).getJavaType(),
-                                    operationValueEntry.getValue().toString()));
+                    return criteriaBuilder.lessThan(getEntityExpressionString(root),
+                            this.getCastValue(javaType, value).toString());
                 case GREATER_THAN:
-                    return criteriaBuilder.greaterThan(root.get(searchCriteria.getKey()),
-                            (Comparable) this.getCastValue(
-                                    root.get(searchCriteria.getKey()).getJavaType(),
-                                    operationValueEntry.getValue().toString()));
+                    return criteriaBuilder.greaterThan(getEntityExpressionString(root),
+                            this.getCastValue(javaType, value).toString());
                 case NULL:
-                    return criteriaBuilder.isNull(root.get(searchCriteria.getKey()));
+                    return criteriaBuilder.isNull(getEntityExpressionObject(root));
                 case NOT_NULL:
-                    return criteriaBuilder.isNotNull(root.get(searchCriteria.getKey()));
+                    return criteriaBuilder.isNotNull(getEntityExpressionObject(root));
                 default:
                     return null;
             }
@@ -105,6 +115,41 @@ public class GenericSpecification<T> implements Specification<T> {
         }
     }
 
+    /**
+     * Gets the string of the path to the entity field for operation
+     * @param root entity root
+     * @return string path to entity field
+     */
+    private Path<String> getEntityExpressionString(Root<T> root) {
+        String[] paths = searchCriteria.getKey().split("\\.");
+        Path<String> partialPath = root.get(paths[0]);
+        for (int i = 1; i < paths.length; i++) {
+            partialPath = partialPath.get(paths[i]);
+        }
+        return partialPath;
+    }
+
+    /**
+     * Gets the path object to the entity field for operation
+     * @param root entity root
+     * @return object path to entity field
+     */
+    private Path<Object> getEntityExpressionObject(Root<T> root) {
+        String[] paths = searchCriteria.getKey().split("\\.");
+        Path<Object> partialPath = root.get(paths[0]);
+        for (int i = 1; i < paths.length; i++) {
+            partialPath = partialPath.get(paths[i]);
+        }
+        return partialPath;
+    }
+
+    /**
+     * Casts the value from the string supplied via JSON into the class type of the entity field
+     * @param classType the entity field type into which to attempt to cast
+     * @param value the value which to cast
+     * @return the value casted into the appropriate object
+     * @throws ParseException if value is not assignable from class type
+     */
     private Object getCastValue(Class classType, String value) throws ParseException {
         if (Boolean.class.isAssignableFrom(classType)) {
             return Boolean.valueOf(value);

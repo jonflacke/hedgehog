@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.util.StringUtils;
 
 import javax.persistence.EmbeddedId;
 import javax.persistence.Id;
@@ -23,34 +24,44 @@ import java.util.*;
  * Created by Jon on 1/19/2019.
  */
 public class RestfulService<T, ID extends Serializable> {
-    private final Logger log = LoggerFactory.getLogger(RestfulService.class);
-    public static final List<String> NON_FILTER_ACTIONS =
+
+    private static final List<String> NON_FILTER_ACTIONS =
             Collections.unmodifiableList(Arrays.asList("sort", "include", "count", "start"));
-    public static final List<String> NON_PREDICATE_TERMS =
+    private static final List<String> FILTER_ACTIONS =
+            Collections.unmodifiableList(Arrays.asList(
+                    "equals", "before", "less", "after", "greater", "like", "starts"," ends", "not", "null"));
+    private static final List<String> NON_PREDICATE_TERMS =
             Collections.unmodifiableList(Arrays.asList("least", "greatest", "min", "max"));
-    public static final List<SearchOperation> VALID_BOOLEAN_OPERATORS =
+
+    private static final List<SearchOperation> VALID_BOOLEAN_OPERATORS =
             Collections.unmodifiableList(Arrays.asList(SearchOperation.EQUALS, SearchOperation.NOT_EQUAL,
                     SearchOperation.NULL, SearchOperation.NOT_NULL));
-    public static final List<SearchOperation> VALID_STRING_OPERATORS =
+    private static final List<SearchOperation> VALID_STRING_OPERATORS =
             Collections.unmodifiableList(Arrays.asList(SearchOperation.EQUALS, SearchOperation.NOT_EQUAL,
                     SearchOperation.NULL, SearchOperation.NOT_NULL, SearchOperation.ENDS, SearchOperation.STARTS,
                     SearchOperation.LIKE));
-    public static final List<SearchOperation> VALID_NUMERIC_OPERATORS =
+    private static final List<SearchOperation> VALID_ENUM_OPERATORS =
+            Collections.unmodifiableList(Arrays.asList(SearchOperation.EQUALS, SearchOperation.NOT_EQUAL,
+                    SearchOperation.NULL, SearchOperation.NOT_NULL, SearchOperation.ENDS, SearchOperation.STARTS,
+                    SearchOperation.LIKE));
+    private static final List<SearchOperation> VALID_NUMERIC_OPERATORS =
             Collections.unmodifiableList(Arrays.asList(SearchOperation.EQUALS, SearchOperation.NOT_EQUAL,
                     SearchOperation.NULL, SearchOperation.NOT_NULL, SearchOperation.ENDS, SearchOperation.STARTS,
                     SearchOperation.LIKE, SearchOperation.GREATER_THAN, SearchOperation.LESS_THAN,
                     SearchOperation.GREATEST, SearchOperation.LEAST));
-    public static final List<SearchOperation> VALID_DATE_OPERATORS =
+    private static final List<SearchOperation> VALID_DATE_OPERATORS =
             Collections.unmodifiableList(Arrays.asList(SearchOperation.EQUALS, SearchOperation.NOT_EQUAL,
                     SearchOperation.NULL, SearchOperation.NOT_NULL, SearchOperation.GREATER_THAN,
                     SearchOperation.LESS_THAN, SearchOperation.GREATEST, SearchOperation.LEAST));
-    public static final List<SearchOperation> VALID_CHARACTER_OPERATORS =
+    private static final List<SearchOperation> VALID_CHARACTER_OPERATORS =
             Collections.unmodifiableList(Arrays.asList(SearchOperation.EQUALS, SearchOperation.NOT_EQUAL,
                     SearchOperation.NULL, SearchOperation.NOT_NULL));
 
+    private final Logger log = LoggerFactory.getLogger(RestfulService.class);
 
     protected BaseJpaRepository<T, ID> baseJpaRepository;
-    private Class<T>                 classType;
+
+    private   Class<T>                 classType;
 
     public RestfulService(BaseJpaRepository<T, ID> baseJpaRepository) {
         this.baseJpaRepository = baseJpaRepository;
@@ -121,7 +132,7 @@ public class RestfulService<T, ID extends Serializable> {
             log.debug("Adding default sort order for: {} with direction: {}",
                     defaultParameter, defaultDirection.toString());
         }
-        return new Sort(orders);
+        return Sort.by(orders);
     }
 
     protected List<SearchCriteria> getSearchCriteria(Map<String, String[]> parameters) {
@@ -129,36 +140,30 @@ public class RestfulService<T, ID extends Serializable> {
         for (String key : parameters.keySet()) {
             log.debug("Parameter {} with values: {}", key, String.join(", ", parameters.get(key)));
             String[] separatedKey = key.split("\\.");
-            String actionSpecifier = this.getRealKey(separatedKey[0]);
-            boolean isNonPredicateKey = this.isNonPredicateKey(key);
-            if (separatedKey.length <= 1 && !isNonPredicateKey) {
+
+            if (separatedKey.length <= 1) {
                 // Enforce keys use reserved words or non-predicate keys only - ignore all others
                 continue;
             }
-            String fieldName = (!isNonPredicateKey ? separatedKey[1] : "");
-            if (this.isNonFilterAction(actionSpecifier) || (!isNonPredicateKey && !this.isFieldOnObject(fieldName))) {
+            String actionSpecifier = this.getActionSpecifier(separatedKey[1]);
+            boolean isNonPredicateKey = this.isNonPredicateKey(actionSpecifier);
+
+            String fieldName = "";
+            String specifiedOperation = "";
+            if (!isNonPredicateKey) {
+                Map<String, String> fieldAndOperation = this.decipherAndValidateFieldNameAndSpecifiedOperation(separatedKey);
+                fieldName = fieldAndOperation.get("fieldName");
+                specifiedOperation = fieldAndOperation.get("specifiedOperation");
+            }
+            if (this.isNonFilterAction(actionSpecifier) || (!isNonPredicateKey && StringUtils.isEmpty(fieldName))) {
                 // non-filter actions are handled elsewhere - skip them here
-                // if the field does not exist on the entity, ignore it
+                // if the field is empty & key a predicate key, field does not exist on the entity so ignore it
                 continue;
             }
-            String specifiedOperation = "";
-            if (separatedKey.length > 2) {
-                specifiedOperation = separatedKey[2];
-            }
-            for (String value : parameters.get(key)) {
-                if (isNonPredicateKey) {
-                    specifiedOperation = actionSpecifier;
-                    fieldName = actionSpecifier;
-                }
-                SearchOperation searchOperation = this.getSearchOperation(specifiedOperation, value);
-                this.validateSearchOperationOnParameterType(searchOperation, getFieldOnObject(fieldName));
-                if (searchCriteriaMap.containsKey(actionSpecifier)) {
-                    searchCriteriaMap.get(actionSpecifier).addOperationValueEntry(searchOperation, value);
-                } else {
-                    searchCriteriaMap.put(actionSpecifier, new SearchCriteria(fieldName, searchOperation, value));
-                }
-            }
+
+            this.createOperationForEachParameterValue(parameters, searchCriteriaMap, key, actionSpecifier, isNonPredicateKey, fieldName, specifiedOperation);
         }
+
         return new ArrayList<>(searchCriteriaMap.values());
     }
 
@@ -180,14 +185,94 @@ public class RestfulService<T, ID extends Serializable> {
         }
     }
 
-    private boolean isFieldOnObject(String fieldName) {
-        return Arrays.stream(this.classType.getDeclaredFields())
-                .anyMatch(f -> f.getName().equals(fieldName));
+    private void createOperationForEachParameterValue(Map<String, String[]> parameters, Map<String,
+            SearchCriteria> searchCriteriaMap, String key, String actionSpecifier, boolean isNonPredicateKey,
+                                                      String fieldName, String specifiedOperation) {
+        for (String value : parameters.get(key)) {
+            if (isNonPredicateKey) {
+                SearchOperation searchOperation = this.getSearchOperation(actionSpecifier, value);
+                this.validateSearchOperationOnParameterType(searchOperation, this.getDeepestFieldOnObject(this.classType, value));
+                if (searchCriteriaMap.containsKey(searchOperation.name())) {
+                    searchCriteriaMap.get(searchOperation.name()).addOperationValueEntry(searchOperation, value);
+                } else {
+                    searchCriteriaMap.put(searchOperation.name(), new SearchCriteria(actionSpecifier, searchOperation, value));
+                }
+            } else {
+                SearchOperation searchOperation = this.getSearchOperation(specifiedOperation, value);
+                this.validateSearchOperationOnParameterType(searchOperation, this.getDeepestFieldOnObject(this.classType, fieldName));
+                if (searchCriteriaMap.containsKey(searchOperation.name())) {
+                    searchCriteriaMap.get(searchOperation.name()).addOperationValueEntry(searchOperation, value);
+                } else {
+                    searchCriteriaMap.put(searchOperation.name(), new SearchCriteria(fieldName, searchOperation, value));
+                }
+            }
+        }
     }
 
-    private Field getFieldOnObject(String fieldName) {
-        return Arrays.stream(this.classType.getDeclaredFields())
+    private boolean isFieldOnObject(Class clazz, String fieldName) {
+        boolean validField = false;
+        String[] fields = fieldName.split("\\.");
+        Field clazzField = this.getFieldOnObject(clazz, fields[0]);
+        if (clazzField != null) {
+            if (fields.length > 1) {
+                validField = this.isFieldOnObject(clazzField.getType(), this.rejoinFieldsFromSecondIndex(fields));
+            } else {
+                validField = true;
+            }
+        }
+        return validField;
+    }
+
+    private Field getFieldOnObject(Class clazz, String fieldName) {
+        return Arrays.stream(clazz.getDeclaredFields())
                 .filter(f -> f.getName().equals(fieldName)).findFirst().orElse(null);
+    }
+
+    private Field getDeepestFieldOnObject(Class clazz, String fieldName) {
+        String[] fields = fieldName.split("\\.");
+        Field clazzField = this.getFieldOnObject(clazz, fields[0]);
+        if (fields.length > 1) {
+            return this.getDeepestFieldOnObject(clazzField.getType(), this.rejoinFieldsFromSecondIndex(fields));
+        }
+        return clazzField;
+    }
+
+    private Map<String, String> decipherAndValidateFieldNameAndSpecifiedOperation(String[] separatedKey) {
+        String fieldName = "";
+        String specifiedOperation = "";
+        if (separatedKey.length == 2) {
+            if (this.isFieldOnObject(this.classType, separatedKey[1])) {
+                fieldName = separatedKey[1];
+            }
+        } else {
+            String fullSuppliedPath = this.rejoinFieldsFromSecondIndex(separatedKey);
+            if (this.isFieldOnObject(this.classType, fullSuppliedPath)) {
+                fieldName = fullSuppliedPath;
+            } else if (FILTER_ACTIONS.contains(separatedKey[separatedKey.length-1])) {
+                String suppliedPathWithoutOperator = this.rejoinFieldsWithoutLastIndex(separatedKey);
+                if (this.isFieldOnObject(this.classType, suppliedPathWithoutOperator)) {
+                    // field is valid and last index is operator
+                    fieldName = suppliedPathWithoutOperator;
+                    specifiedOperation = separatedKey[separatedKey.length-1];
+                }
+            }
+        }
+        return createFieldAndOperationMap(fieldName, specifiedOperation);
+    }
+
+    private Map<String, String> createFieldAndOperationMap(String fieldName, String specifiedOperation) {
+        Map<String, String> fieldAndOperation = new HashMap<>();
+        fieldAndOperation.put("fieldName", fieldName);
+        fieldAndOperation.put("specifiedOperation", specifiedOperation);
+        return fieldAndOperation;
+    }
+
+    private String rejoinFieldsFromSecondIndex(String[] fields) {
+        return String.join(".", Arrays.copyOfRange(fields, 1, fields.length));
+    }
+
+    private String rejoinFieldsWithoutLastIndex(String[] fields) {
+        return rejoinFieldsFromSecondIndex(Arrays.copyOfRange(fields, 0, fields.length - 1));
     }
 
     private Field getDefaultSortField() {
@@ -253,6 +338,7 @@ public class RestfulService<T, ID extends Serializable> {
             case "greatest":
                 searchOperation = SearchOperation.GREATEST;
                 break;
+            case "equal":
             case "":
                 searchOperation = SearchOperation.EQUALS;
                 break;
@@ -271,27 +357,27 @@ public class RestfulService<T, ID extends Serializable> {
                 if (!VALID_NUMERIC_OPERATORS.contains(searchOperation)) {
                     operationValid = false;
                 }
-            }
-            if (field.getType().isAssignableFrom(String.class)) {
+            } else if (field.getType().isAssignableFrom(String.class)) {
                 if (!VALID_STRING_OPERATORS.contains(searchOperation)) {
                     operationValid = false;
                 }
-            }
-            if (field.getType().isAssignableFrom(Date.class)
+            } else if (field.getType().isAssignableFrom(Date.class)
                     || field.getType().isAssignableFrom(Time.class)
                     || field.getType().isAssignableFrom(LocalDate.class)
                     || field.getType().isAssignableFrom(LocalDateTime.class)) {
                 if (!VALID_DATE_OPERATORS.contains(searchOperation)) {
                     operationValid = false;
                 }
-            }
-            if (field.getType().isAssignableFrom(Boolean.class)) {
+            } else if (field.getType().isAssignableFrom(Boolean.class)) {
                 if (!VALID_BOOLEAN_OPERATORS.contains(searchOperation)) {
                     operationValid = false;
                 }
-            }
-            if (field.getType().isAssignableFrom(Character.class)) {
+            } else if (field.getType().isAssignableFrom(Character.class)) {
                 if (!VALID_CHARACTER_OPERATORS.contains(searchOperation)) {
+                    operationValid = false;
+                }
+            } else if (field.getType().isAssignableFrom(Enum.class)) {
+                if (!VALID_ENUM_OPERATORS.contains(searchOperation)) {
                     operationValid = false;
                 }
             }
@@ -310,7 +396,7 @@ public class RestfulService<T, ID extends Serializable> {
         return NON_PREDICATE_TERMS.contains(key);
     }
 
-    private String getRealKey(String originalKey) {
+    private String getActionSpecifier(String originalKey) {
         if (originalKey.equals("least")) {
             originalKey = "min";
         } else if (originalKey.equals("greatest")) {
