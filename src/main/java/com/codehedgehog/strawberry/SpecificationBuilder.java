@@ -31,11 +31,17 @@ public class SpecificationBuilder<T> {
     }
 
     private Specification<T> getPredicateOnlySpecification() {
-        Iterator<SearchCriteria> iterator = searchCriteriaList.iterator();
-        SearchCriteria searchCriteria = iterator.next();
-        Specification<T> spec = Specification.where(new GenericSpecification<T>(searchCriteria));
+        return this.getPredicateSpecification(searchCriteriaList, null);
+    }
+
+    private Specification<T> getPredicateSpecification(List<SearchCriteria> predicateCriteria, Specification<T> spec) {
+        Iterator<SearchCriteria> iterator = predicateCriteria.iterator();
+        if (spec == null) {
+            SearchCriteria searchCriteria = iterator.next();
+            spec = Specification.where(new GenericSpecification<T>(searchCriteria));
+        }
         while (iterator.hasNext()) {
-            searchCriteria = iterator.next();
+            SearchCriteria searchCriteria = iterator.next();
             spec = spec.and(new GenericSpecification<T>(searchCriteria));
         }
         return spec;
@@ -69,15 +75,6 @@ public class SpecificationBuilder<T> {
                 predicateCriteria.add(searchCriterion);
             }
         }
-    }
-
-    private Specification<T> getPredicateSpecification(List<SearchCriteria> predicateCriteria, Specification<T> spec) {
-        Iterator<SearchCriteria> iterator = predicateCriteria.iterator();
-        while (iterator.hasNext()) {
-            SearchCriteria searchCriteria = iterator.next();
-            spec = spec.and(new GenericSpecification<T>(searchCriteria));
-        }
-        return spec;
     }
 
     private Boolean containsNonPredicateTerms() {

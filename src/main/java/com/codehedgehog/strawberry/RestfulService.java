@@ -15,6 +15,7 @@ import javax.persistence.IdClass;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -214,8 +215,16 @@ public class RestfulService<T, ID extends Serializable> {
         String[] fields = fieldName.split("\\.");
         Field clazzField = this.getFieldOnObject(clazz, fields[0]);
         if (clazzField != null) {
+            Class clazzType = clazzField.getType();
+            if (clazzField.getGenericType() instanceof ParameterizedType) {
+                ParameterizedType parameterizedType = (ParameterizedType) clazzField.getGenericType();
+                Type[] typeArguments = parameterizedType.getActualTypeArguments();
+                for (Type type : typeArguments) {
+                    clazzType = (Class) type;
+                }
+            }
             if (fields.length > 1) {
-                validField = this.isFieldOnObject(clazzField.getType(), this.rejoinFieldsFromSecondIndex(fields));
+                validField = this.isFieldOnObject(clazzType, this.rejoinFieldsFromSecondIndex(fields));
             } else {
                 validField = true;
             }
@@ -231,8 +240,16 @@ public class RestfulService<T, ID extends Serializable> {
     private Field getDeepestFieldOnObject(Class clazz, String fieldName) {
         String[] fields = fieldName.split("\\.");
         Field clazzField = this.getFieldOnObject(clazz, fields[0]);
+        Class clazzType = clazzField.getType();
+        if (clazzField.getGenericType() instanceof ParameterizedType) {
+            ParameterizedType parameterizedType = (ParameterizedType) clazzField.getGenericType();
+            Type[] typeArguments = parameterizedType.getActualTypeArguments();
+            for (Type type : typeArguments) {
+                clazzType = (Class) type;
+            }
+        }
         if (fields.length > 1) {
-            return this.getDeepestFieldOnObject(clazzField.getType(), this.rejoinFieldsFromSecondIndex(fields));
+            return this.getDeepestFieldOnObject(clazzType, this.rejoinFieldsFromSecondIndex(fields));
         }
         return clazzField;
     }
