@@ -192,7 +192,7 @@ public class RestfulService<T, ID extends Serializable> {
         for (String value : parameters.get(key)) {
             if (isNonPredicateKey) {
                 SearchOperation searchOperation = this.getSearchOperation(actionSpecifier, value);
-                this.validateSearchOperationOnParameterType(searchOperation, this.getDeepestFieldOnObject(this.classType, value));
+                this.validateSearchOperationOnParameterType(searchOperation, EntityTraversalUtility.getDeepestFieldOnObject(this.classType, value));
                 if (searchCriteriaMap.containsKey(searchOperation.name())) {
                     searchCriteriaMap.get(searchOperation.name()).addOperationValueEntry(searchOperation, value);
                 } else {
@@ -200,7 +200,7 @@ public class RestfulService<T, ID extends Serializable> {
                 }
             } else {
                 SearchOperation searchOperation = this.getSearchOperation(specifiedOperation, value);
-                this.validateSearchOperationOnParameterType(searchOperation, this.getDeepestFieldOnObject(this.classType, fieldName));
+                this.validateSearchOperationOnParameterType(searchOperation, EntityTraversalUtility.getDeepestFieldOnObject(this.classType, fieldName));
                 if (searchCriteriaMap.containsKey(searchOperation.name())) {
                     searchCriteriaMap.get(searchOperation.name()).addOperationValueEntry(searchOperation, value);
                 } else {
@@ -210,64 +210,20 @@ public class RestfulService<T, ID extends Serializable> {
         }
     }
 
-    private boolean isFieldOnObject(Class clazz, String fieldName) {
-        boolean validField = false;
-        String[] fields = fieldName.split("\\.");
-        Field clazzField = this.getFieldOnObject(clazz, fields[0]);
-        if (clazzField != null) {
-            Class clazzType = clazzField.getType();
-            if (clazzField.getGenericType() instanceof ParameterizedType) {
-                ParameterizedType parameterizedType = (ParameterizedType) clazzField.getGenericType();
-                Type[] typeArguments = parameterizedType.getActualTypeArguments();
-                for (Type type : typeArguments) {
-                    clazzType = (Class) type;
-                }
-            }
-            if (fields.length > 1) {
-                validField = this.isFieldOnObject(clazzType, this.rejoinFieldsFromSecondIndex(fields));
-            } else {
-                validField = true;
-            }
-        }
-        return validField;
-    }
-
-    private Field getFieldOnObject(Class clazz, String fieldName) {
-        return Arrays.stream(clazz.getDeclaredFields())
-                .filter(f -> f.getName().equals(fieldName)).findFirst().orElse(null);
-    }
-
-    private Field getDeepestFieldOnObject(Class clazz, String fieldName) {
-        String[] fields = fieldName.split("\\.");
-        Field clazzField = this.getFieldOnObject(clazz, fields[0]);
-        Class clazzType = clazzField.getType();
-        if (clazzField.getGenericType() instanceof ParameterizedType) {
-            ParameterizedType parameterizedType = (ParameterizedType) clazzField.getGenericType();
-            Type[] typeArguments = parameterizedType.getActualTypeArguments();
-            for (Type type : typeArguments) {
-                clazzType = (Class) type;
-            }
-        }
-        if (fields.length > 1) {
-            return this.getDeepestFieldOnObject(clazzType, this.rejoinFieldsFromSecondIndex(fields));
-        }
-        return clazzField;
-    }
-
     private Map<String, String> decipherAndValidateFieldNameAndSpecifiedOperation(String[] separatedKey) {
         String fieldName = "";
         String specifiedOperation = "";
         if (separatedKey.length == 2) {
-            if (this.isFieldOnObject(this.classType, separatedKey[1])) {
+            if (EntityTraversalUtility.isFieldOnObject(this.classType, separatedKey[1])) {
                 fieldName = separatedKey[1];
             }
         } else {
-            String fullSuppliedPath = this.rejoinFieldsFromSecondIndex(separatedKey);
-            if (this.isFieldOnObject(this.classType, fullSuppliedPath)) {
+            String fullSuppliedPath = EntityTraversalUtility.rejoinFieldsFromSecondIndex(separatedKey);
+            if (EntityTraversalUtility.isFieldOnObject(this.classType, fullSuppliedPath)) {
                 fieldName = fullSuppliedPath;
             } else if (FILTER_ACTIONS.contains(separatedKey[separatedKey.length-1])) {
-                String suppliedPathWithoutOperator = this.rejoinFieldsWithoutLastIndex(separatedKey);
-                if (this.isFieldOnObject(this.classType, suppliedPathWithoutOperator)) {
+                String suppliedPathWithoutOperator = EntityTraversalUtility.rejoinFieldsWithoutLastIndex(separatedKey);
+                if (EntityTraversalUtility.isFieldOnObject(this.classType, suppliedPathWithoutOperator)) {
                     // field is valid and last index is operator
                     fieldName = suppliedPathWithoutOperator;
                     specifiedOperation = separatedKey[separatedKey.length-1];
@@ -282,14 +238,6 @@ public class RestfulService<T, ID extends Serializable> {
         fieldAndOperation.put("fieldName", fieldName);
         fieldAndOperation.put("specifiedOperation", specifiedOperation);
         return fieldAndOperation;
-    }
-
-    private String rejoinFieldsFromSecondIndex(String[] fields) {
-        return String.join(".", Arrays.copyOfRange(fields, 1, fields.length));
-    }
-
-    private String rejoinFieldsWithoutLastIndex(String[] fields) {
-        return rejoinFieldsFromSecondIndex(Arrays.copyOfRange(fields, 0, fields.length - 1));
     }
 
     private Field getDefaultSortField() {
