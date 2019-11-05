@@ -10,7 +10,7 @@ import java.util.Arrays;
  */
 public class EntityTraversalUtility {
 
-    public static boolean isFieldOnParameterizedSubEntity(Class clazz, String fieldName) {
+    static boolean isFieldOnParameterizedSubEntity(Class clazz, String fieldName) {
         boolean containsParameterizedType = false;
         String[] fields = fieldName.split("\\.");
         Field clazzField = getFieldOnObject(clazz, fields[0]);
@@ -25,7 +25,29 @@ public class EntityTraversalUtility {
         return containsParameterizedType;
     }
 
-    public static boolean isFieldOnObject(Class clazz, String fieldName) {
+    static ClassFieldPath getParameterizedEntityAndRemainingFieldPath(ClassFieldPath parentClassFieldPath) {
+        ClassFieldPath childClassFieldPath = null;
+        String[] fields = parentClassFieldPath.getFieldPath().split("\\.");
+        Class testClass = parentClassFieldPath.getClazz();
+        for (int i = 0; i < fields.length; i++) {
+            Field clazzField = getFieldOnObject(testClass, fields[i]);
+            if (clazzField.getGenericType() instanceof ParameterizedType) {
+                Class clazzType = clazzField.getType();
+                ParameterizedType parameterizedType = (ParameterizedType) clazzField.getGenericType();
+                Type[] typeArguments = parameterizedType.getActualTypeArguments();
+                for (Type type : typeArguments) {
+                    clazzType = (Class) type;
+                }
+                childClassFieldPath = new ClassFieldPath(clazzType, rejoinFieldsFromIndex(fields, i));
+                break;
+            } else {
+                testClass = clazzField.getType();
+            }
+        }
+        return childClassFieldPath;
+    }
+
+    static boolean isFieldOnObject(Class clazz, String fieldName) {
         boolean validField = false;
         String[] fields = fieldName.split("\\.");
         Field clazzField = getFieldOnObject(clazz, fields[0]);
@@ -47,12 +69,12 @@ public class EntityTraversalUtility {
         return validField;
     }
 
-    public static  Field getFieldOnObject(Class clazz, String fieldName) {
+    static  Field getFieldOnObject(Class clazz, String fieldName) {
         return Arrays.stream(clazz.getDeclaredFields())
                 .filter(f -> f.getName().equals(fieldName)).findFirst().orElse(null);
     }
 
-    public static  Field getDeepestFieldOnObject(Class clazz, String fieldName) {
+    static  Field getDeepestFieldOnObject(Class clazz, String fieldName) {
         String[] fields = fieldName.split("\\.");
         Field clazzField = EntityTraversalUtility.getFieldOnObject(clazz, fields[0]);
         Class clazzType = clazzField.getType();
@@ -69,11 +91,15 @@ public class EntityTraversalUtility {
         return clazzField;
     }
 
-    public static  String rejoinFieldsFromSecondIndex(String[] fields) {
-        return String.join(".", Arrays.copyOfRange(fields, 1, fields.length));
+    static  String rejoinFieldsFromSecondIndex(String[] fields) {
+        return rejoinFieldsFromIndex(fields, 1);
     }
 
-    public static  String rejoinFieldsWithoutLastIndex(String[] fields) {
+    static  String rejoinFieldsWithoutLastIndex(String[] fields) {
         return rejoinFieldsFromSecondIndex(Arrays.copyOfRange(fields, 0, fields.length - 1));
+    }
+
+    static String rejoinFieldsFromIndex(String[] fields, Integer startIndex) {
+        return String.join(".", Arrays.copyOfRange(fields, startIndex, fields.length));
     }
 }

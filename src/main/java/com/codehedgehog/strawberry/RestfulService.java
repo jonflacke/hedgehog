@@ -179,7 +179,7 @@ public class RestfulService<T, ID extends Serializable> {
             if (paginationParameters.containsKey("count")) {
                 count = paginationParameters.get("count");
             }
-            PageRequest pageRequest = new PageRequest(start, count, sort);
+            PageRequest pageRequest = PageRequest.of(start, count, sort);
             return pageRequest;
         } else {
             return null;

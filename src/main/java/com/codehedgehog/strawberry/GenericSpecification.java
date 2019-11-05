@@ -78,6 +78,20 @@ public class GenericSpecification<T> implements Specification<T> {
      */
     private Predicate getSearchPredicate(Root<T> root, CriteriaBuilder criteriaBuilder, Map.Entry<SearchOperation,
             Object> operationValueEntry) {
+        if (EntityTraversalUtility.isFieldOnParameterizedSubEntity(root.getJavaType(), searchCriteria.getKey())) {
+            /*
+            Go down field list to parameterized entity
+            make a new predicate with a subquery using the entity & use the "where - in" method to join
+            Do recursive calling to this function passing in the parameterized subentity class and fields remaining
+            once at the bottom, make the normal criteria query which returns the values for the "in" for the above function call(s)
+             */
+            return null;
+        } else {
+            return getNonParameterizedFieldPredicate(root, criteriaBuilder, operationValueEntry);
+        }
+    }
+
+    private Predicate getNonParameterizedFieldPredicate(Root<T> root, CriteriaBuilder criteriaBuilder, Map.Entry<SearchOperation, Object> operationValueEntry) {
         try {
             final String value = operationValueEntry.getValue().toString().toLowerCase();
             Class<?> javaType = getEntityExpressionObject(root).getJavaType();
