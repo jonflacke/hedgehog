@@ -99,10 +99,10 @@ public class GenericSpecification<T> implements Specification<T> {
                             this.getCastValue(javaType, value));
                 case LESS_THAN:
                     return criteriaBuilder.lessThan(getEntityExpressionString(root),
-                            this.getCastValue(javaType, value).toString());
+                            (Comparable) this.getCastValue(javaType, value));
                 case GREATER_THAN:
                     return criteriaBuilder.greaterThan(getEntityExpressionString(root),
-                            this.getCastValue(javaType, value).toString());
+                            (Comparable) this.getCastValue(javaType, value));
                 case NULL:
                     return criteriaBuilder.isNull(getEntityExpressionObject(root));
                 case NOT_NULL:
