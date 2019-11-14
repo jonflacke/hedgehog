@@ -98,10 +98,10 @@ public class GenericSpecification<T> implements Specification<T> {
                     return criteriaBuilder.notEqual(criteriaBuilder.lower(getEntityExpressionString(root)),
                             this.getCastValue(javaType, value));
                 case LESS_THAN:
-                    return criteriaBuilder.lessThan(getEntityExpressionString(root),
+                    return criteriaBuilder.lessThan(getEntityExpressionComparable(root),
                             (Comparable) this.getCastValue(javaType, value));
                 case GREATER_THAN:
-                    return criteriaBuilder.greaterThan(getEntityExpressionString(root),
+                    return criteriaBuilder.greaterThan(getEntityExpressionComparable(root),
                             (Comparable) this.getCastValue(javaType, value));
                 case NULL:
                     return criteriaBuilder.isNull(getEntityExpressionObject(root));
@@ -137,6 +137,20 @@ public class GenericSpecification<T> implements Specification<T> {
     private Path<Object> getEntityExpressionObject(Root<T> root) {
         String[] paths = searchCriteria.getKey().split("\\.");
         Path<Object> partialPath = root.get(paths[0]);
+        for (int i = 1; i < paths.length; i++) {
+            partialPath = partialPath.get(paths[i]);
+        }
+        return partialPath;
+    }
+
+    /**
+     * Gets the path comparable to the entity field for operation
+     * @param root entity root
+     * @return object path to entity field
+     */
+    private Path<Comparable> getEntityExpressionComparable(Root<T> root) {
+        String[] paths = searchCriteria.getKey().split("\\.");
+        Path<Comparable> partialPath = root.get(paths[0]);
         for (int i = 1; i < paths.length; i++) {
             partialPath = partialPath.get(paths[i]);
         }
