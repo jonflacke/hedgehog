@@ -79,23 +79,23 @@ public class GenericSpecification<T> implements Specification<T> {
     private Predicate getSearchPredicate(Root<T> root, CriteriaBuilder criteriaBuilder, Map.Entry<SearchOperation,
             Object> operationValueEntry) {
         try {
-            final String value = operationValueEntry.getValue().toString().toLowerCase();
+            final String value = operationValueEntry.getValue().toString().toUpperCase();
             Class<?> javaType = getEntityExpressionObject(root).getJavaType();
             switch (operationValueEntry.getKey()) {
                 case LIKE:
-                    return criteriaBuilder.like(criteriaBuilder.lower(getEntityExpressionString(root)),
+                    return criteriaBuilder.like(criteriaBuilder.upper(getEntityExpressionString(root)),
                             SQL_LIKE + this.getCastValue(javaType, value) + SQL_LIKE);
                 case STARTS:
-                    return criteriaBuilder.like(criteriaBuilder.lower(getEntityExpressionString(root)),
+                    return criteriaBuilder.like(criteriaBuilder.upper(getEntityExpressionString(root)),
                             this.getCastValue(javaType, value) + SQL_LIKE);
                 case ENDS:
-                    return criteriaBuilder.like(criteriaBuilder.lower(getEntityExpressionString(root)),
+                    return criteriaBuilder.like(criteriaBuilder.upper(getEntityExpressionString(root)),
                             SQL_LIKE + this.getCastValue(javaType, value));
                 case EQUALS:
-                    return criteriaBuilder.equal(criteriaBuilder.lower(getEntityExpressionString(root)),
+                    return criteriaBuilder.equal(criteriaBuilder.upper(getEntityExpressionString(root)),
                             this.getCastValue(javaType, value));
                 case NOT_EQUAL:
-                    return criteriaBuilder.notEqual(criteriaBuilder.lower(getEntityExpressionString(root)),
+                    return criteriaBuilder.notEqual(criteriaBuilder.upper(getEntityExpressionString(root)),
                             this.getCastValue(javaType, value));
                 case LESS_THAN:
                     return criteriaBuilder.lessThan(getEntityExpressionComparable(root),
