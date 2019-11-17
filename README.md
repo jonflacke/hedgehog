@@ -92,7 +92,7 @@ public class MyModelController {
     private MyModelService myModelService;
 
     public MyModelController(MyModelService myModelService) {
-        return this.myModelService = myModelService;
+        this.myModelService = myModelService;
     }
 
     @GetMapping("my-models")
