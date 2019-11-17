@@ -58,7 +58,7 @@ With the model and repositories in place, you can then build your service. It sh
 
 ```
 @Service
-public class MyModelService extends RestfulService<MyModel, Integer> {
+public class MyModelService extends RestfulService<MyModelRepository, MyModel, Integer> {
 
     public MyModelService(MyModelRepository myModelRepository) {
         super(myModelRepository);
@@ -305,3 +305,5 @@ All of the above can be used together in any combination. If you wanted to find 
 - Not all data types supported as columns
 - ~~Passing in a column key that does not exist in the object will return an error - the key should be ignored if unknown~~
 - Add support for projections
+- Currently searches are all case insensitive
+- Ability to traverse the entity objects to find ManyToMany, OneToMany, or ManyToOne joins and act appropriately (OneToOne and embedded classes will currently work)

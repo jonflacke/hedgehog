@@ -24,7 +24,7 @@ import java.util.*;
 /**
  * Created by Jon on 1/19/2019.
  */
-public class RestfulService<T, ID extends Serializable> {
+public class RestfulService<R extends BaseJpaRepository<T, ID>, T, ID extends Serializable> {
 
     private static final List<String> NON_FILTER_ACTIONS =
             Collections.unmodifiableList(Arrays.asList("sort", "include", "count", "start"));
@@ -60,11 +60,11 @@ public class RestfulService<T, ID extends Serializable> {
 
     private final Logger log = LoggerFactory.getLogger(RestfulService.class);
 
-    protected BaseJpaRepository<T, ID> baseJpaRepository;
+    protected R baseJpaRepository;
 
     private   Class<T>                 classType;
 
-    public RestfulService(BaseJpaRepository<T, ID> baseJpaRepository) {
+    public RestfulService(R baseJpaRepository) {
         this.baseJpaRepository = baseJpaRepository;
         this.classType = ((Class<T>) ((ParameterizedType) getClass()
                 .getGenericSuperclass()).getActualTypeArguments()[0]);
